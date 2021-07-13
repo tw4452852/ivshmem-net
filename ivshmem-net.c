@@ -653,6 +653,7 @@ static void ivshm_net_state_change(struct work_struct *work)
        * If the remote goes to RESET, we need to follow immediately.
        */
 			ivshm_net_do_stop(ndev);
+			ivshm_net_set_state(in, IVSHM_NET_STATE_INIT);
 		}
 		break;
 	}
@@ -692,6 +693,7 @@ static int ivshm_net_open(struct net_device *ndev)
 	ivshm_net_run(ndev);
 	mutex_unlock(&in->state_lock);
 
+	writel(in->peer_id << 16, &in->ivshm_regs->doorbell);
 	return 0;
 }
 
@@ -705,6 +707,7 @@ static int ivshm_net_stop(struct net_device *ndev)
 	ivshm_net_do_stop(ndev);
 	mutex_unlock(&in->state_lock);
 
+	writel(in->peer_id << 16, &in->ivshm_regs->doorbell);
 	return 0;
 }
 
@@ -959,7 +962,7 @@ static void ivshm_net_remove(struct pci_dev *pdev)
 	struct net_device *ndev = pci_get_drvdata(pdev);
 	struct ivshm_net *in = netdev_priv(ndev);
 
-	writel(IVSHM_NET_STATE_RESET, MY_STATE);
+	ivshm_net_stop(ndev);
 
 	if (!pdev->msix_enabled)
 		writel(0, &in->ivshm_regs->intxctrl);
