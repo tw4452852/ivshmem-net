@@ -908,6 +908,14 @@ static int ivshm_net_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	ndev->hw_features = NETIF_F_HW_CSUM | NETIF_F_SG;
 	ndev->features = ndev->hw_features;
 
+	/* Set the default MAC address */
+	ndev->dev_addr[0] = 0x00;
+	ndev->dev_addr[1] = 0x16;
+	ndev->dev_addr[2] = 0x3E;
+	ndev->dev_addr[3] = 0x00;
+	ndev->dev_addr[4] = peer_id & 0xFF;
+	ndev->dev_addr[5] = my_id & 0xFF;
+
 	netif_carrier_off(ndev);
 	netif_napi_add(ndev, &in->napi, ivshm_net_poll, NAPI_POLL_WEIGHT);
 
