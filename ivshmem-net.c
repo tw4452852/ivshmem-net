@@ -58,16 +58,16 @@ static uint peer_id = IVSHM_NET_INVALID_ID;
 module_param(peer_id, uint, 0660);
 MODULE_PARM_DESC(peer_id, "peer's ID, must be specified");
 
-static uint capacity = 4;
+static uint capacity = 2;
 module_param(capacity, uint, 0660);
-MODULE_PARM_DESC(capacity, "capacity of the id, default to 4");
+MODULE_PARM_DESC(capacity, "capacity of the id, default to 2");
 
 static bool debug = false;
 module_param(debug, bool, 0600);
 MODULE_PARM_DESC(debug, "enable debug, default to false");
 
-#define MY_STATE (u32 *)(in->shm + my_id * (in->shmlen / capacity))
-#define PEER_STATE (u32 *)(in->shm + peer_id * (in->shmlen / capacity))
+#define MY_STATE (u32 *)(in->shm + !!(my_id < peer_id) * (in->shmlen / capacity))
+#define PEER_STATE (u32 *)(in->shm + !!(peer_id < my_id) * (in->shmlen / capacity))
 #define MY_QUEUE (MY_STATE + 1)
 #define PEER_QUEUE (PEER_STATE + 1)
 #define QUEUE_SIZE (in->shmlen / capacity - 4)
@@ -980,8 +980,7 @@ static struct pci_driver ivshm_net_driver = {
 
 static int __init ivshm_net_init(void)
 {
-	if (peer_id == my_id || capacity < 2 || peer_id >= capacity ||
-	    my_id >= capacity) {
+	if (peer_id == my_id || capacity < 2) {
 		pr_err("invalid peer's id[%u], my id[%u] or capacity[%u]\n",
 		       peer_id, my_id, capacity);
 		return -EINVAL;
