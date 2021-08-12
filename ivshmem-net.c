@@ -48,14 +48,14 @@
 
 #define IVSHM_NET_VQ_ALIGN 64
 
-#define IVSHM_NET_INVALID_ID (~0)
+#define IVSHM_NET_INVALID_ID (0xff)
 
-static uint my_id = IVSHM_NET_INVALID_ID;
-module_param(my_id, uint, 0660);
+static uint8_t my_id = IVSHM_NET_INVALID_ID;
+module_param(my_id, byte, 0660);
 MODULE_PARM_DESC(my_id, "My ID, must be specified");
 
-static uint peer_id = IVSHM_NET_INVALID_ID;
-module_param(peer_id, uint, 0660);
+static uint8_t peer_id = IVSHM_NET_INVALID_ID;
+module_param(peer_id, byte, 0660);
 MODULE_PARM_DESC(peer_id, "peer's ID, must be specified");
 
 static uint capacity = 2;
@@ -86,6 +86,14 @@ struct ivshmem_regs {
 	u32 ivpos;
 	u32 doorbell;
 };
+
+/* ivshmem vendor specific capability structure */
+struct ivshmem_vendor_cap {
+	uint8_t cap_vndr;
+	uint8_t cap_next;
+	uint8_t cap_len;
+	uint8_t peer_id;
+} __packed;
 
 struct ivshm_net_queue {
 	struct vring vr;
@@ -840,7 +848,7 @@ static int ivshm_net_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	resource_size_t shmlen;
 	char *device_name;
 	void *shm;
-	int ret;
+	int ret, pos;
 
 	ret = pcim_enable_device(pdev);
 	if (ret) {
@@ -881,6 +889,20 @@ static int ivshm_net_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	pci_set_drvdata(pdev, ndev);
 	SET_NETDEV_DEV(ndev, &pdev->dev);
+
+	if (my_id == IVSHM_NET_INVALID_ID) {
+		my_id = regs->ivpos;
+	}
+	if (peer_id == IVSHM_NET_INVALID_ID) {
+		pos = pci_find_capability(pdev, PCI_CAP_ID_VNDR);
+		if (pos > 0) {
+			pci_read_config_byte(pdev, pos + offsetof(struct ivshmem_vendor_cap, peer_id), &peer_id);
+		}
+	}
+	if (peer_id == IVSHM_NET_INVALID_ID || my_id == IVSHM_NET_INVALID_ID) {
+		pr_err("invalid id: peer[%x], my[%x]\n", peer_id, my_id);
+		return -EINVAL;
+	}
 
 	in = netdev_priv(ndev);
 	in->ivshm_regs = regs;
@@ -990,24 +1012,7 @@ static struct pci_driver ivshm_net_driver = {
 	.remove = ivshm_net_remove,
 };
 
-static int __init ivshm_net_init(void)
-{
-	if (peer_id == my_id || capacity < 2) {
-		pr_err("invalid peer's id[%u], my id[%u] or capacity[%u]\n",
-		       peer_id, my_id, capacity);
-		return -EINVAL;
-	}
-
-	return pci_register_driver(&ivshm_net_driver);
-}
-
-static void __exit ivshm_net_exit(void)
-{
-	pci_unregister_driver(&ivshm_net_driver);
-}
-
-module_init(ivshm_net_init);
-module_exit(ivshm_net_exit);
+module_pci_driver(ivshm_net_driver);
 
 MODULE_AUTHOR("Wei Tan <wei.tan@intel.com>");
 MODULE_LICENSE("GPL");
