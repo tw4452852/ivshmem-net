@@ -353,13 +353,13 @@ static bool ivshm_net_tx_clean(struct net_device *ndev)
 
 		data = ivshm_net_desc_data(in, &in->tx, desc, &len);
 		if (!data) {
-			netdev_err(ndev, "bad tx descriptor, data == NULL\n");
+			netdev_err(ndev, "bad tx descriptor, data == NULL, id[%d], last[%d], peer->used->idx[%d]\n", used->id, last, vr->used->idx);
 			break;
 		}
 
 		tail = ivshm_net_tx_advance(tx, &tx->tail, len);
 		if (data != tx->data + tail) {
-			netdev_err(ndev, "bad tx descriptor\n");
+			netdev_err(ndev, "bad tx descriptor, id[%d], last[%d], peer->used->idx[%d]\n", used->id, last, vr->used->idx);
 			break;
 		}
 
@@ -589,6 +589,7 @@ static void ivshm_net_do_stop(struct net_device *ndev)
 {
 	struct ivshm_net *in = netdev_priv(ndev);
 
+	memset(MY_QUEUE, 0, QUEUE_SIZE);
 	ivshm_net_set_state(in, IVSHM_NET_STATE_RESET);
 
 	if (!test_and_clear_bit(IVSHM_NET_FLAG_RUN, &in->flags))
