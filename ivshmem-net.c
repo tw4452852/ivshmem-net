@@ -50,13 +50,13 @@
 
 #define IVSHM_NET_INVALID_ID (0xff)
 
-static uint8_t my_id = IVSHM_NET_INVALID_ID;
-module_param(my_id, byte, 0660);
-MODULE_PARM_DESC(my_id, "My ID, must be specified");
+static uint8_t default_my_id = IVSHM_NET_INVALID_ID;
+module_param(default_my_id, byte, 0660);
+MODULE_PARM_DESC(my_id, "My ID, if specified, ignore the detected one");
 
-static uint8_t peer_id = IVSHM_NET_INVALID_ID;
-module_param(peer_id, byte, 0660);
-MODULE_PARM_DESC(peer_id, "peer's ID, must be specified");
+static uint8_t default_peer_id = IVSHM_NET_INVALID_ID;
+module_param(default_peer_id, byte, 0660);
+MODULE_PARM_DESC(peer_id, "peer's ID, if specified, ignore the detected one");
 
 static uint capacity = 2;
 module_param(capacity, uint, 0660);
@@ -66,8 +66,8 @@ static bool debug = false;
 module_param(debug, bool, 0600);
 MODULE_PARM_DESC(debug, "enable debug, default to false");
 
-#define MY_STATE (u32 *)(in->shm + !!(my_id < peer_id) * (in->shmlen / capacity))
-#define PEER_STATE (u32 *)(in->shm + !!(peer_id < my_id) * (in->shmlen / capacity))
+#define MY_STATE (u32 *)(in->shm + !!(in->my_id < in->peer_id) * (in->shmlen / capacity))
+#define PEER_STATE (u32 *)(in->shm + !!(in->peer_id < in->my_id) * (in->shmlen / capacity))
 #define MY_QUEUE (MY_STATE + 1)
 #define PEER_QUEUE (PEER_STATE + 1)
 #define QUEUE_SIZE (in->shmlen / capacity - 4)
@@ -849,6 +849,8 @@ static int ivshm_net_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	char *device_name;
 	void *shm;
 	int ret, pos;
+	uint8_t my_id = default_my_id;
+	uint8_t peer_id = default_peer_id;
 
 	ret = pcim_enable_device(pdev);
 	if (ret) {
@@ -890,10 +892,10 @@ static int ivshm_net_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	pci_set_drvdata(pdev, ndev);
 	SET_NETDEV_DEV(ndev, &pdev->dev);
 
-	if (my_id == IVSHM_NET_INVALID_ID) {
-		my_id = regs->ivpos;
+	if (default_my_id == IVSHM_NET_INVALID_ID) {
+		my_id = (uint8_t)readl(&regs->ivpos);
 	}
-	if (peer_id == IVSHM_NET_INVALID_ID) {
+	if (default_peer_id == IVSHM_NET_INVALID_ID) {
 		pos = pci_find_capability(pdev, PCI_CAP_ID_VNDR);
 		if (pos > 0) {
 			pci_read_config_byte(pdev, pos + offsetof(struct ivshmem_vendor_cap, peer_id), &peer_id);
