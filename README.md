@@ -1,18 +1,5 @@
-# ivshmem-net
-NIC driver based on virtualized shared memory
+# Network driver based on ACRN ivshmem
 
-## How to build
+Virtual network card driver based on [ACRN ivshmem](https://projectacrn.github.io/latest/tutorials/enable_ivshmem.html#enable-ivshmem).
 
-To make module for the currently running kernel:
-
-```
-make
-```
-
-Or to make for your specified kernel:
-
-```
-make KDIR=<path to your kernel source directory>
-```
-
-Once build successfully, `ivshmem-net.ko` will be generated under current directory.
+We support [Windows](./windows) and [Linux](./linux) right now.
