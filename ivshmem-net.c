@@ -617,6 +617,10 @@ static void ivshm_net_state_change(struct work_struct *work)
 	_dbg("%s: state[%d], last_peer_state[%d], current_peer_state[%d]\n",
 	     __func__, in->state, in->last_peer_state, rstate);
 
+	if (rstate == IVSHM_NET_STATE_RUN) {
+		napi_schedule_irqoff(&in->napi);
+	}
+
 	mutex_lock(&in->state_lock);
 	if (in->last_peer_state == rstate) {
 		mutex_unlock(&in->state_lock);
@@ -686,7 +690,6 @@ static irqreturn_t ivshm_net_int(int irq, void *data)
 	in->stats.interrupts++;
 
 	ivshm_net_check_state(ndev);
-	napi_schedule_irqoff(&in->napi);
 
 	return IRQ_HANDLED;
 }
