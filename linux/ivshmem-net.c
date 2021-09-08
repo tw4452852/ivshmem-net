@@ -618,7 +618,7 @@ static void ivshm_net_state_change(struct work_struct *work)
 	     __func__, in->state, in->last_peer_state, rstate);
 
 	if (rstate == IVSHM_NET_STATE_RUN) {
-		napi_schedule_irqoff(&in->napi);
+		napi_schedule(&in->napi);
 	}
 
 	mutex_lock(&in->state_lock);
